@@ -62,9 +62,9 @@ class User(db.Model):
     email: Mapped[str] = mapped_column(String(120), nullable=False)
     password: Mapped[str] = mapped_column(nullable=False)
     posts: Mapped[list["Post"]] = relationship(secondary="user_posts",back_populates="author")
-    comments: Mapped[list["Comment"]] = relationship(secondary="user_comments", back_populates="commented")
-    follows: Mapped[list["User"]] = relationship(secondary="user_follows", back_populates="follows")
-    followers: Mapped[list["User"]] = relationship(secondary="user_followers", back_populates="followers")
+    comments: Mapped[list["Comment"]] = relationship(secondary="user_comments", back_populates="author")
+    follows: Mapped[list["User"]] = relationship(secondary="user_follows", back_populates="followers")
+    followers: Mapped[list["User"]] = relationship(secondary="user_followers", back_populates="follows")
 
 
     def serialize(self):
@@ -80,8 +80,8 @@ class User(db.Model):
 class Post(db.Model):
     id: Mapped[int] = mapped_column(primary_key=True, nullable=False)
     user_id: Mapped[int] = mapped_column(ForeignKey('user.id'))
-    media: Mapped[list["Media"]] = relationship(back_populates="content_in_post", secondary="post_media")
-    comments: Mapped[list["Comment"]] = relationship(secondary="post_comments", back_populates="comments_in_post")
+    media: Mapped[list["Media"]] = relationship(secondary="post_media")
+    comments: Mapped[list["Comment"]] = relationship(secondary="post_comments")
     author: Mapped["User"] = relationship(back_populates="posts")
 
     def serialize(self):
@@ -113,7 +113,7 @@ class Comment(db.Model):
     comment_text: Mapped[str] = mapped_column(String(120), nullable=False)
     author_id: Mapped[int] = relationship(ForeignKey("user.id"))
     post_id: Mapped[int] = mapped_column(ForeignKey("post.id"))
-    author: Mapped["User"] = relationship(back_populates="commented")
+    author: Mapped["User"] = relationship(back_populates="comments")
     
 
     def serialize(self):
@@ -132,5 +132,5 @@ class Follower(db.Model):
 class Mediatype(db.Model):
     id: Mapped[int] = mapped_column(primary_key=True, nullable=False)
     media_type: Mapped[str] = mapped_column(String(20), nullable=False)
-    media_same_type: Mapped[list["Media"]] = relationship(secondary="same_type_media", back_populates="media_of_type")
+    media_same_type: Mapped[list["Media"]] = relationship(secondary="same_type_media")
 
