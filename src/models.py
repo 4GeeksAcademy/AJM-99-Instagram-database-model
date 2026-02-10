@@ -4,55 +4,14 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 db = SQLAlchemy()
 
-
-post_coments = Table(
-    "post_comments",
-    db.metadata,
-    Column("post_id", ForeignKey("post.id")),
-    Column("comment", ForeignKey("comment.id"))
-)
-
-post_media = Table(
-    "post_media",
-    db.metadata,
-    Column("post_id", ForeignKey("post.id")),
-    Column("media", ForeignKey("media.id"))
-)
-
-user_posts = Table(
-    "user_posts",
-    db.metadata,
-    Column("user_id", ForeignKey("user.id")),
-    Column("post_id", ForeignKey("post.id"))
-)
-
-user_comments = Table(
-    "user_comments",
-    db.metadata,
-    Column("user_id", ForeignKey("user.id")),
-    Column("comment_id", ForeignKey("comment.id"))
-)
-
 user_follows = Table(
     "user_follows",
     db.metadata,
-    Column("user_id", ForeignKey("user.id"))
-)
-
-user_followers = Table(
-    "user_followers",
-    db.metadata,
-    Column("user_id", ForeignKey("user.id"))
+    Column("follower", ForeignKey("user.id")),
+    Column("follow", ForeignKey("user.id"))
 )
 
 
-same_type_media = Table(
-    "same_type_posts",
-    db.metadata,
-    Column("media_id", ForeignKey("media.id")),
-    Column("type_id", ForeignKey("mediatype.id"))
-
-)
 
 class User(db.Model):
     id: Mapped[int] = mapped_column(primary_key=True, nullable=False)
@@ -61,10 +20,10 @@ class User(db.Model):
     latname: Mapped[str] = mapped_column(String(120), unique=False, nullable=False)
     email: Mapped[str] = mapped_column(String(120), nullable=False)
     password: Mapped[str] = mapped_column(nullable=False)
-    posts: Mapped[list["Post"]] = relationship(secondary="user_posts",back_populates="author")
-    comments: Mapped[list["Comment"]] = relationship(secondary="user_comments", back_populates="author")
-    follows: Mapped[list["User"]] = relationship(secondary="user_follows", back_populates="followers")
-    followers: Mapped[list["User"]] = relationship(secondary="user_followers", back_populates="follows")
+    posts: Mapped[list["Post"]] = relationship(back_populates="author")
+    comments: Mapped[list["Comment"]] = relationship(back_populates="author")
+    follow: Mapped[list["User"]] = relationship(secondary="user_follows", back_populates="followed_by")
+    followed_by: Mapped[list["User"]] = relationship(secondary="user_follows", back_populates="follow")
 
 
     def serialize(self):
@@ -80,8 +39,8 @@ class User(db.Model):
 class Post(db.Model):
     id: Mapped[int] = mapped_column(primary_key=True, nullable=False)
     user_id: Mapped[int] = mapped_column(ForeignKey('user.id'))
-    media: Mapped[list["Media"]] = relationship(secondary="post_media")
-    comments: Mapped[list["Comment"]] = relationship(secondary="post_comments")
+    media: Mapped[list["Media"]] = relationship(back_populates="posted_in")
+    comments: Mapped[list["Comment"]] = relationship(back_populates="commented_in")
     author: Mapped["User"] = relationship(back_populates="posts")
 
     def serialize(self):
@@ -98,6 +57,7 @@ class Media(db.Model):
     type: Mapped[int] = mapped_column(ForeignKey("mediatype.id"))
     url: Mapped[str] = mapped_column(unique=True, nullable=False)
     post_id: Mapped[int] = mapped_column(ForeignKey("post.id"))
+    posted_in: Mapped["Post"] = relationship(back_populates="media")
 
     def serialize(self):
         return {
@@ -114,6 +74,7 @@ class Comment(db.Model):
     author_id: Mapped[int] = relationship(ForeignKey("user.id"))
     post_id: Mapped[int] = mapped_column(ForeignKey("post.id"))
     author: Mapped["User"] = relationship(back_populates="comments")
+    commented_in: Mapped["Post"] = relationship(back_populates="comments")
     
 
     def serialize(self):
@@ -132,5 +93,4 @@ class Follower(db.Model):
 class Mediatype(db.Model):
     id: Mapped[int] = mapped_column(primary_key=True, nullable=False)
     media_type: Mapped[str] = mapped_column(String(20), nullable=False)
-    media_same_type: Mapped[list["Media"]] = relationship(secondary="same_type_media")
 
