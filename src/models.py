@@ -1,30 +1,33 @@
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import String, Boolean, ForeignKey, Table, Column
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import String, Boolean, ForeignKey, Table, Column, Integer
+from sqlalchemy.orm import Mapped, mapped_column, relationship, foreign
 
 db = SQLAlchemy()
 
 user_follows = Table(
     "user_follows",
-    db.metadata,
-    Column("follower", ForeignKey("user.id")),
-    Column("follow", ForeignKey("user.id"))
+    db.Model.metadata,
+    Column("follower", Integer, ForeignKey("user.id"), primary_key=True),
+    Column("follow", Integer, ForeignKey("user.id"), primary_key=True)
 )
-
 
 
 class User(db.Model):
     id: Mapped[int] = mapped_column(primary_key=True, nullable=False)
-    username: Mapped[str] = mapped_column(String(120), unique=True, nullable=False)
-    firstname: Mapped[str] = mapped_column(String(120), unique=False, nullable=False)
-    latname: Mapped[str] = mapped_column(String(120), unique=False, nullable=False)
+    username: Mapped[str] = mapped_column(
+        String(120), unique=True, nullable=False)
+    firstname: Mapped[str] = mapped_column(
+        String(120), unique=False, nullable=False)
+    lastname: Mapped[str] = mapped_column(
+        String(120), unique=False, nullable=False)
     email: Mapped[str] = mapped_column(String(120), nullable=False)
     password: Mapped[str] = mapped_column(nullable=False)
     posts: Mapped[list["Post"]] = relationship(back_populates="author")
     comments: Mapped[list["Comment"]] = relationship(back_populates="author")
-    follow: Mapped[list["User"]] = relationship(secondary="user_follows", back_populates="followed_by")
-    followed_by: Mapped[list["User"]] = relationship(secondary="user_follows", back_populates="follow")
-
+    follow: Mapped[list["User"]] = relationship(
+        secondary="user_follows", back_populates="followed_by", primaryjoin=id == foreign(user_follows.c.follower), secondaryjoin=id == foreign(user_follows.c.follow))
+    followed_by: Mapped[list["User"]] = relationship(
+        secondary="user_follows", back_populates="follow" , primaryjoin=id == foreign(user_follows.c.follow), secondaryjoin=id == foreign(user_follows.c.follower))
 
     def serialize(self):
         return {
@@ -34,13 +37,15 @@ class User(db.Model):
             "lastname": self.lastname,
             "email": self.email
             # do not serialize the password, its a security breach
-        }   
+        }
+
 
 class Post(db.Model):
     id: Mapped[int] = mapped_column(primary_key=True, nullable=False)
     user_id: Mapped[int] = mapped_column(ForeignKey('user.id'))
     media: Mapped[list["Media"]] = relationship(back_populates="posted_in")
-    comments: Mapped[list["Comment"]] = relationship(back_populates="commented_in")
+    comments: Mapped[list["Comment"]] = relationship(
+        back_populates="commented_in")
     author: Mapped["User"] = relationship(back_populates="posts")
 
     def serialize(self):
@@ -49,7 +54,7 @@ class Post(db.Model):
             "media": (media.serialize() for media in self.media),
             "comments": (comment.serialize() for comment in self.comments),
             "author": self.author.serialize()
-        } 
+        }
 
 
 class Media(db.Model):
@@ -65,17 +70,16 @@ class Media(db.Model):
             "type": self.type,
             "url": self.url,
             "posted_in_post": self.post_id
-        } 
-    
+        }
+
 
 class Comment(db.Model):
     id: Mapped[int] = mapped_column(primary_key=True, nullable=False)
     comment_text: Mapped[str] = mapped_column(String(120), nullable=False)
-    author_id: Mapped[int] = relationship(ForeignKey("user.id"))
+    author_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
     post_id: Mapped[int] = mapped_column(ForeignKey("post.id"))
     author: Mapped["User"] = relationship(back_populates="comments")
     commented_in: Mapped["Post"] = relationship(back_populates="comments")
-    
 
     def serialize(self):
         return {
@@ -84,13 +88,16 @@ class Comment(db.Model):
             "url": self.url,
             "posted_in_post": self.post_id,
             "author": self.author.serialize()
-        } 
+        }
+
 
 class Follower(db.Model):
-    user_from_id: Mapped[int] = mapped_column(ForeignKey("user.id"), primary_key=True, nullable=False)
-    user_to_id: Mapped[int] = mapped_column(ForeignKey("user.id"), primary_key=True, nullable=False)
+    user_from_id: Mapped[int] = mapped_column(
+        ForeignKey("user.id"), primary_key=True, nullable=False)
+    user_to_id: Mapped[int] = mapped_column(
+        ForeignKey("user.id"), primary_key=True, nullable=False)
+
 
 class Mediatype(db.Model):
     id: Mapped[int] = mapped_column(primary_key=True, nullable=False)
     media_type: Mapped[str] = mapped_column(String(20), nullable=False)
-
